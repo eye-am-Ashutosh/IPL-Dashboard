@@ -669,14 +669,31 @@ def main() -> None:
                 use_container_width=True,
             )
 
-        no_result = len(results) - len(decided)
-        if no_result:
+        undetermined = results[results["winner"].isna()].copy()
+        if not undetermined.empty:
+            st.divider()
+            st.subheader("Rain-affected, tied, and no-result matches")
             st.caption(
-                f"{no_result} match(es) with no result, a tie without a Super Over, or "
-                f"a weather/DLS-affected finish where the winner can't be reliably "
-                f"determined from ball-by-ball totals alone (a rain-shortened chase can "
-                f"be won on a revised target with a lower final score than the first "
-                f"innings — comparing raw totals would get these wrong)."
+                "Matches with no determinable winner: genuine no-results, ties without "
+                "a Super Over, or a weather/DLS-affected finish where the winner can't "
+                "be reliably worked out from ball-by-ball totals alone (a rain-shortened "
+                "chase can be won on a revised target with a lower final score than the "
+                "first innings — comparing raw totals would get these wrong)."
+            )
+            reason_labels = {
+                "No result": "No result",
+                "Tie (no Super Over)": "Tied (no Super Over)",
+                "Winner unclear (weather/DLS-affected — not determinable from ball-by-ball data)": (
+                    "Weather/DLS-affected (unclear)"
+                ),
+            }
+            undetermined["reason"] = undetermined["result_type"].map(reason_labels)
+            st.dataframe(
+                undetermined[["season", "team1", "team2", "reason"]].sort_values(
+                    ["season", "reason"]
+                ),
+                hide_index=True,
+                use_container_width=True,
             )
 
     with tab_venues:

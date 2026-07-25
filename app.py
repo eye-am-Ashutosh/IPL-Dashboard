@@ -54,7 +54,21 @@ def find_data_path() -> Path | None:
 
 @st.cache_data(show_spinner="Loading IPL delivery data…")
 def load_data(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    # season must be forced to string: pandas' chunked CSV reader infers
+    # dtype per chunk, and a column that's purely numeric text in some
+    # chunks ("2009") but not others ("2007/08") ends up as a mix of int
+    # and str objects, which crashes any later .sort_values("season").
+    df = pd.read_csv(
+        path,
+        dtype={
+            "season": str,
+            "match_winner": str,
+            "toss_winner": str,
+            "toss_decision": str,
+            "city": str,
+            "date": str,
+        },
+    )
     return normalize_venues(normalize_teams(normalize_seasons(df)))
 
 

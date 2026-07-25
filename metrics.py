@@ -27,8 +27,9 @@ BOWLER_CREDITED_DISMISSALS = {
 
 def normalize_teams(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-    for col in ("batting_team", "bowling_team"):
-        out[col] = out[col].replace(TEAM_ALIASES)
+    for col in ("batting_team", "bowling_team", "match_winner", "toss_winner", "team1", "team2"):
+        if col in out.columns:
+            out[col] = out[col].replace(TEAM_ALIASES)
     return out
 
 
@@ -109,12 +110,18 @@ def batter_stats(df: pd.DataFrame, min_balls: int = 300) -> pd.DataFrame:
         .agg(
             runs=("batsman_runs", "sum"),
             balls=("is_legal_delivery", "sum"),
-            dismissals=("is_wicket", "sum"),
         )
         .query("balls >= @min_balls")
     )
+    # Count dismissals against whoever was actually given out, not whoever
+    # was facing the ball — on a run out the two can differ (the
+    # non-striker gets run out while the striker is still in).
+    dismissals = (
+        df.loc[df["is_wicket"] == 1].groupby("player_dismissed").size()
+    )
     fours = df.loc[df["batsman_runs"] == 4].groupby("batter").size()
     sixes = df.loc[df["batsman_runs"] == 6].groupby("batter").size()
+    grouped["dismissals"] = grouped["batter"].map(dismissals).fillna(0).astype(int)
     grouped["fours"] = grouped["batter"].map(fours).fillna(0).astype(int)
     grouped["sixes"] = grouped["batter"].map(sixes).fillna(0).astype(int)
     grouped["strike_rate"] = (grouped["runs"] / grouped["balls"] * 100).round(1)
@@ -221,6 +228,11 @@ def match_results(df: pd.DataFrame) -> pd.DataFrame:
             balls=("is_legal_delivery", "sum"),
         )
     )
+    ground_truth_winner = (
+        df.groupby("match_id")["match_winner"].first()
+        if "match_winner" in df.columns
+        else pd.Series(dtype=object)
+    )
 
     rows = []
     for match_id, match_df in innings.groupby("match_id"):
@@ -244,6 +256,35 @@ def match_results(df: pd.DataFrame) -> pd.DataFrame:
         score1, score2 = main["runs"].iloc[0], main["runs"].iloc[1]
         wkts2 = main["wickets"].iloc[1]
         balls1, balls2 = main["balls"].iloc[0], main["balls"].iloc[1]
+
+        known_winner = ground_truth_winner.get(match_id)
+        if pd.notna(known_winner) and known_winner in (team1, team2):
+            # Trust the source data's recorded winner over a raw score
+            # comparison — the only reliable way to get weather/DLS-affected
+            # finishes right, since those can be won on a revised target
+            # with a lower score than the other innings.
+            if known_winner == team1:
+                if score1 > score2:
+                    result_type, margin = "Won batting 1st (runs)", score1 - score2
+                else:
+                    result_type, margin = "Won batting 1st (weather/DLS-revised target)", None
+            else:
+                if score2 > score1:
+                    result_type, margin = "Won batting 2nd (wickets)", 10 - wkts2
+                else:
+                    result_type, margin = "Won batting 2nd (weather/DLS-revised target)", None
+            rows.append(
+                {
+                    "match_id": match_id,
+                    "season": season,
+                    "team1": team1,
+                    "team2": team2,
+                    "winner": known_winner,
+                    "result_type": result_type,
+                    "margin": margin,
+                }
+            )
+            continue
 
         if score1 == score2:
             supers = match_df[match_df["inning"].isin([3, 4, 5, 6])].sort_values("inning")

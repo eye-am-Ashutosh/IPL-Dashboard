@@ -13,7 +13,6 @@ app/
 files/
 sma/
 ipl_json/
-.claude/
 
 # Large uncompressed data — the .csv.gz version is what's tracked/deployed
 ipl_deliveries_real (1).csv

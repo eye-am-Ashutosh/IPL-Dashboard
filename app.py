@@ -34,9 +34,18 @@ from metrics import (
     venue_overview,
 )
 
-ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_DATA = ROOT / "ipl_deliveries_real (1).csv.gz"
-FALLBACK_DATA = ROOT / "ipl_deliveries_real (1).csv"
+HERE = Path(__file__).resolve().parent
+DATA_FILENAMES = ["ipl_deliveries_real (1).csv.gz", "ipl_deliveries_real (1).csv"]
+CANDIDATE_DIRS = [HERE, HERE.parent]
+
+
+def find_data_path() -> Path | None:
+    for directory in CANDIDATE_DIRS:
+        for name in DATA_FILENAMES:
+            candidate = directory / name
+            if candidate.exists():
+                return candidate
+    return None
 
 
 @st.cache_data(show_spinner="Loading IPL delivery data…")
@@ -83,9 +92,9 @@ def main() -> None:
     st.title("IPL Deliveries Dashboard")
     st.caption("Ball-by-ball analysis across IPL seasons (2007/08 – 2026)")
 
-    data_path = DEFAULT_DATA if DEFAULT_DATA.exists() else FALLBACK_DATA
-    if not data_path.exists():
-        st.error("Could not find ipl_deliveries_real CSV in the project root.")
+ data_path = find_data_path()
+    if data_path is None:
+        st.error("Could not find the ipl_deliveries_real CSV / CSV.gz file.")
         st.stop()
 
     df_all = load_data(str(data_path))

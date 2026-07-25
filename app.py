@@ -120,7 +120,18 @@ def main() -> None:
             default=[],
             placeholder="All teams",
         )
-        min_balls = st.slider("Min balls (player tables)", 100, 1000, 300, step=50)
+        min_balls = st.slider(
+            "Min balls (player tables)",
+            100,
+            1000,
+            300,
+            step=50,
+            help=(
+                "Only affects the Batting/Bowling leaderboards and phase specialists. "
+                "Doesn't affect Overview's pie charts or match/team-level stats "
+                "elsewhere, since those aren't per-player."
+            ),
+        )
         st.divider()
         st.caption(f"Data source: `{data_path.name}`")
 
@@ -277,6 +288,12 @@ def main() -> None:
         batting_df = df[df["batting_team"].isin(teams)] if teams else df
         batters = batter_stats(batting_df, min_balls=min_balls)
         st.subheader("Top run-scorers")
+        st.caption(
+            f"{len(batters)} batter(s) have faced at least {min_balls} balls under the "
+            f"current filters — the table below is sorted by total runs, so raising the "
+            f"threshold mostly trims low-volume players off the *bottom* of that pool "
+            f"rather than changing who's on top."
+        )
         st.dataframe(
             batters[
                 [
@@ -327,6 +344,12 @@ def main() -> None:
         st.divider()
         st.subheader("Phase specialists")
         phase_min_balls = max(20, min_balls // 5)
+        st.caption(
+            f"Uses a scaled-down threshold of {phase_min_balls} balls *in that phase* "
+            f"(1/5th of the sidebar's Min balls setting, floored at 20) — a full innings "
+            f"only has 36 powerplay balls and 30 death-overs balls, so the full "
+            f"{min_balls}-ball threshold would empty these out."
+        )
         pcol1, pcol2 = st.columns(2)
         with pcol1:
             st.markdown("**Top powerplay scorers** (overs 1-6)")
@@ -370,6 +393,12 @@ def main() -> None:
         bowling_df = df[df["bowling_team"].isin(teams)] if teams else df
         bowlers = bowler_stats(bowling_df, min_balls=min_balls)
         st.subheader("Top wicket-takers")
+        st.caption(
+            f"{len(bowlers)} bowler(s) have bowled at least {min_balls} balls under the "
+            f"current filters — the table below is sorted by total wickets, so raising "
+            f"the threshold mostly trims low-volume bowlers off the *bottom* of that "
+            f"pool rather than changing who's on top."
+        )
         st.dataframe(
             bowlers[
                 [
@@ -419,6 +448,12 @@ def main() -> None:
         st.divider()
         st.subheader("Phase specialists")
         phase_min_balls = max(20, min_balls // 5)
+        st.caption(
+            f"Uses a scaled-down threshold of {phase_min_balls} balls *in that phase* "
+            f"(1/5th of the sidebar's Min balls setting, floored at 20) — a full innings "
+            f"only has 36 powerplay balls and 30 death-overs balls, so the full "
+            f"{min_balls}-ball threshold would empty these out."
+        )
         pcol1, pcol2 = st.columns(2)
         with pcol1:
             st.markdown("**Best powerplay economy** (overs 1-6)")

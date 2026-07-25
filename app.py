@@ -657,7 +657,13 @@ def main() -> None:
 
         no_result = len(results) - len(decided)
         if no_result:
-            st.caption(f"{no_result} match(es) with no result / tie without a Super Over.")
+            st.caption(
+                f"{no_result} match(es) with no result, a tie without a Super Over, or "
+                f"a weather/DLS-affected finish where the winner can't be reliably "
+                f"determined from ball-by-ball totals alone (a rain-shortened chase can "
+                f"be won on a revised target with a lower final score than the first "
+                f"innings — comparing raw totals would get these wrong)."
+            )
 
     with tab_venues:
         venues_df = venue_overview(df)

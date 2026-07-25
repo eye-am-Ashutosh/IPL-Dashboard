@@ -361,12 +361,12 @@ def main() -> None:
 
         st.divider()
         st.subheader("Phase specialists")
-        phase_min_balls = max(20, min_balls // 5)
+        phase_min_balls = min_balls
         st.caption(
-            f"Uses a scaled-down threshold of {phase_min_balls} balls *in that phase* "
-            f"(1/5th of the sidebar's Min balls setting, floored at 20) — a full innings "
-            f"only has 36 powerplay balls and 30 death-overs balls, so the full "
-            f"{min_balls}-ball threshold would empty these out."
+            f"Requires at least {phase_min_balls} balls faced/bowled specifically in "
+            f"that phase (not career-wide) — same number as the sidebar's Min balls "
+            f"setting, so a powerplay-only specialist with plenty of career balls but "
+            f"few *in this phase* still won't qualify."
         )
         pcol1, pcol2 = st.columns(2)
         with pcol1:
@@ -489,12 +489,12 @@ def main() -> None:
 
         st.divider()
         st.subheader("Phase specialists")
-        phase_min_balls = max(20, min_balls // 5)
+        phase_min_balls = min_balls
         st.caption(
-            f"Uses a scaled-down threshold of {phase_min_balls} balls *in that phase* "
-            f"(1/5th of the sidebar's Min balls setting, floored at 20) — a full innings "
-            f"only has 36 powerplay balls and 30 death-overs balls, so the full "
-            f"{min_balls}-ball threshold would empty these out."
+            f"Requires at least {phase_min_balls} balls faced/bowled specifically in "
+            f"that phase (not career-wide) — same number as the sidebar's Min balls "
+            f"setting, so a powerplay-only specialist with plenty of career balls but "
+            f"few *in this phase* still won't qualify."
         )
         pcol1, pcol2 = st.columns(2)
         with pcol1:

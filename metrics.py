@@ -19,6 +19,19 @@ def normalize_teams(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+SEASON_ALIASES = {
+    "2007/08": "2008",
+    "2009/10": "2010",
+    "2020/21": "2020",
+}
+
+
+def normalize_seasons(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["season"] = out["season"].replace(SEASON_ALIASES)
+    return out
+
+
 VENUE_ALIASES = {
     "Eden Gardens, Kolkata": "Eden Gardens",
     "Wankhede Stadium, Mumbai": "Wankhede Stadium",

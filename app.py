@@ -92,7 +92,7 @@ def main() -> None:
     st.title("IPL Deliveries Dashboard")
     st.caption("Ball-by-ball analysis across IPL seasons (2007/08 – 2026)")
 
- data_path = find_data_path()
+    data_path = find_data_path()
     if data_path is None:
         st.error("Could not find the ipl_deliveries_real CSV / CSV.gz file.")
         st.stop()

@@ -2,8 +2,8 @@
 IPL Deliveries Dashboard
 ------------------------
 Run locally:
-    pip install -r dashboard/requirements.txt
-    streamlit run dashboard/app.py
+    pip install -r requirements.txt
+    streamlit run app.py
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from metrics import (
     chase_defend_summary,
     head_to_head,
     match_results,
+    normalize_seasons,
     normalize_teams,
     normalize_venues,
     phase_batting_leaders,
@@ -36,6 +37,9 @@ from metrics import (
 
 HERE = Path(__file__).resolve().parent
 DATA_FILENAMES = ["ipl_deliveries_real (1).csv.gz", "ipl_deliveries_real (1).csv"]
+# Checks both this file's own directory and its parent, so it works whether
+# app.py sits next to the data file (flat layout) or inside a subfolder
+# like dashboard/ (nested layout).
 CANDIDATE_DIRS = [HERE, HERE.parent]
 
 
@@ -51,7 +55,7 @@ def find_data_path() -> Path | None:
 @st.cache_data(show_spinner="Loading IPL delivery data…")
 def load_data(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
-    return normalize_venues(normalize_teams(df))
+    return normalize_venues(normalize_teams(normalize_seasons(df)))
 
 
 def filter_data(
@@ -90,7 +94,6 @@ def main() -> None:
     )
 
     st.title("IPL Deliveries Dashboard")
-    st.caption("Ball-by-ball analysis across IPL seasons (2007/08 – 2026)")
 
     data_path = find_data_path()
     if data_path is None:
@@ -98,13 +101,18 @@ def main() -> None:
         st.stop()
 
     df_all = load_data(str(data_path))
+    all_seasons_sorted = sorted(df_all["season"].unique(), key=str)
+    st.caption(
+        f"Ball-by-ball analysis across IPL seasons "
+        f"({all_seasons_sorted[0]} – {all_seasons_sorted[-1]})"
+    )
 
     with st.sidebar:
         st.header("Filters")
         seasons = st.multiselect(
             "Season",
-            options=sorted(df_all["season"].unique(), key=str),
-            default=sorted(df_all["season"].unique(), key=str),
+            options=all_seasons_sorted,
+            default=all_seasons_sorted,
         )
         teams = st.multiselect(
             "Team",
@@ -173,6 +181,9 @@ def main() -> None:
             )
             fig_season.update_traces(texttemplate="%{text}", textposition="outside")
             fig_season.update_layout(coloraxis_showscale=False, height=420)
+            fig_season.update_xaxes(
+                type="category", categoryorder="array", categoryarray=season_df["season"].tolist()
+            )
             st.plotly_chart(fig_season, use_container_width=True)
 
         with right:

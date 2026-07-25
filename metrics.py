@@ -11,6 +11,19 @@ TEAM_ALIASES = {
     "Rising Pune Supergiant": "Rising Pune Supergiants",
 }
 
+# Dismissal kinds credited to the bowler. Run outs, retired hurt, retired
+# not out, and obstructing the field are not — they still end the batter's
+# innings (and count toward the team's wickets lost) but don't count as a
+# bowler's wicket.
+BOWLER_CREDITED_DISMISSALS = {
+    "bowled",
+    "caught",
+    "caught and bowled",
+    "lbw",
+    "stumped",
+    "hit wicket",
+}
+
 
 def normalize_teams(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
@@ -117,12 +130,17 @@ def bowler_stats(df: pd.DataFrame, min_balls: int = 300) -> pd.DataFrame:
         .agg(
             balls=("is_legal_delivery", "sum"),
             runs_conceded=("bowler_runs", "sum"),
-            wickets=("is_wicket", "sum"),
             wides=("wides", "sum"),
             noballs=("noballs", "sum"),
         )
         .query("balls >= @min_balls")
     )
+    bowler_wickets = (
+        df.loc[df["dismissal_kind"].isin(BOWLER_CREDITED_DISMISSALS)]
+        .groupby("bowler")
+        .size()
+    )
+    grouped["wickets"] = grouped["bowler"].map(bowler_wickets).fillna(0).astype(int)
     grouped["economy"] = (
         grouped["runs_conceded"] / (grouped["balls"] / 6)
     ).round(2)
@@ -197,7 +215,11 @@ def match_results(df: pd.DataFrame) -> pd.DataFrame:
     """One row per match: winner, margin, and how the match was decided."""
     innings = (
         df.groupby(["match_id", "season", "inning", "batting_team"], as_index=False)
-        .agg(runs=("total_runs", "sum"), wickets=("is_wicket", "sum"))
+        .agg(
+            runs=("total_runs", "sum"),
+            wickets=("is_wicket", "sum"),
+            balls=("is_legal_delivery", "sum"),
+        )
     )
 
     rows = []
@@ -221,6 +243,7 @@ def match_results(df: pd.DataFrame) -> pd.DataFrame:
         team1, team2 = main["batting_team"].iloc[0], main["batting_team"].iloc[1]
         score1, score2 = main["runs"].iloc[0], main["runs"].iloc[1]
         wkts2 = main["wickets"].iloc[1]
+        balls1, balls2 = main["balls"].iloc[0], main["balls"].iloc[1]
 
         if score1 == score2:
             supers = match_df[match_df["inning"].isin([3, 4, 5, 6])].sort_values("inning")
@@ -255,6 +278,18 @@ def match_results(df: pd.DataFrame) -> pd.DataFrame:
 
         if score2 > score1:
             winner, result_type, margin = team2, "Won batting 2nd (wickets)", 10 - wkts2
+        elif balls2 < balls1 and wkts2 < 10:
+            # Team 2's innings ended early (fewer balls than team 1 faced)
+            # without being bowled out, yet scored less — only possible if
+            # the chase was cut short by weather and finished on a
+            # DLS-revised target. We don't have par-score data to know who
+            # actually won, so don't guess: team 1 did NOT necessarily win
+            # just because their raw total was higher.
+            winner, result_type, margin = (
+                None,
+                "Winner unclear (weather/DLS-affected — not determinable from ball-by-ball data)",
+                None,
+            )
         else:
             winner, result_type, margin = team1, "Won batting 1st (runs)", score1 - score2
 
@@ -330,7 +365,11 @@ def phase_bowling_leaders(df: pd.DataFrame, phase: str, min_balls: int = 36) -> 
         .agg(balls=("bowler_runs", "count"), runs_conceded=("bowler_runs", "sum"))
         .query("balls >= @min_balls")
     )
-    wkts = phase_df.loc[phase_df["is_wicket"] == 1].groupby("bowler").size()
+    wkts = (
+        phase_df.loc[phase_df["dismissal_kind"].isin(BOWLER_CREDITED_DISMISSALS)]
+        .groupby("bowler")
+        .size()
+    )
     grouped["wickets"] = grouped["bowler"].map(wkts).fillna(0).astype(int)
     grouped["economy"] = (grouped["runs_conceded"] / (grouped["balls"] / 6)).round(2)
     return grouped.sort_values("economy")

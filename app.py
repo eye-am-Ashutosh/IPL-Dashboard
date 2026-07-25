@@ -288,14 +288,32 @@ def main() -> None:
         batting_df = df[df["batting_team"].isin(teams)] if teams else df
         batters = batter_stats(batting_df, min_balls=min_balls)
         st.subheader("Top run-scorers")
-        st.caption(
-            f"{len(batters)} batter(s) have faced at least {min_balls} balls under the "
-            f"current filters — the table below is sorted by total runs, so raising the "
-            f"threshold mostly trims low-volume players off the *bottom* of that pool "
-            f"rather than changing who's on top."
+        bat_sort_label = st.radio(
+            "Sort table by",
+            ["Runs", "Strike rate", "Average"],
+            horizontal=True,
+            key="bat_sort",
         )
+        bat_sort_col = {"Runs": "runs", "Strike rate": "strike_rate", "Average": "average"}[
+            bat_sort_label
+        ]
+        batters_sorted = batters.sort_values(bat_sort_col, ascending=False)
+        if bat_sort_label == "Runs":
+            st.caption(
+                f"{len(batters)} batter(s) have faced at least {min_balls} balls under "
+                f"the current filters. Sorted by total runs, so raising the threshold "
+                f"mostly trims low-volume players off the *bottom* — switch to Strike "
+                f"rate or Average to see the threshold actually reorder who's on top."
+            )
+        else:
+            st.caption(
+                f"{len(batters)} batter(s) have faced at least {min_balls} balls under "
+                f"the current filters, sorted by {bat_sort_label.lower()}. This is where "
+                f"the Min balls threshold matters most: lower it and small-sample outliers "
+                f"(great {bat_sort_label.lower()} in a handful of balls) will climb in."
+            )
         st.dataframe(
-            batters[
+            batters_sorted[
                 [
                     "batter",
                     "runs",
@@ -393,14 +411,38 @@ def main() -> None:
         bowling_df = df[df["bowling_team"].isin(teams)] if teams else df
         bowlers = bowler_stats(bowling_df, min_balls=min_balls)
         st.subheader("Top wicket-takers")
-        st.caption(
-            f"{len(bowlers)} bowler(s) have bowled at least {min_balls} balls under the "
-            f"current filters — the table below is sorted by total wickets, so raising "
-            f"the threshold mostly trims low-volume bowlers off the *bottom* of that "
-            f"pool rather than changing who's on top."
+        bowl_sort_label = st.radio(
+            "Sort table by",
+            ["Wickets", "Economy", "Average"],
+            horizontal=True,
+            key="bowl_sort",
         )
+        bowl_sort_col = {
+            "Wickets": "wickets",
+            "Economy": "economy",
+            "Average": "average",
+        }[bowl_sort_label]
+        # Wickets: more is better. Economy/Average: lower is better.
+        bowlers_sorted = bowlers.sort_values(
+            bowl_sort_col, ascending=(bowl_sort_label != "Wickets")
+        )
+        if bowl_sort_label == "Wickets":
+            st.caption(
+                f"{len(bowlers)} bowler(s) have bowled at least {min_balls} balls under "
+                f"the current filters. Sorted by total wickets, so raising the threshold "
+                f"mostly trims low-volume bowlers off the *bottom* — switch to Economy or "
+                f"Average to see the threshold actually reorder who's on top."
+            )
+        else:
+            st.caption(
+                f"{len(bowlers)} bowler(s) have bowled at least {min_balls} balls under "
+                f"the current filters, sorted by {bowl_sort_label.lower()} (best first). "
+                f"This is where the Min balls threshold matters most: lower it and "
+                f"small-sample outliers (great {bowl_sort_label.lower()} in a handful of "
+                f"balls) will climb in."
+            )
         st.dataframe(
-            bowlers[
+            bowlers_sorted[
                 [
                     "bowler",
                     "wickets",
